@@ -379,8 +379,8 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
 
         <div>
           <span class="pill" style="background:#020617;color:#fff;">Premium Swahili conversation platform</span>
-          <h1>Meet learners, start conversations, and earn through Swahili practice.</h1>
-          <p class="muted" style="font-size:18px; max-width:700px;">Access a clean, premium chat platform where every conversation begins with secure sign in and a simple payment unlock via MegaPay.</p>
+          <h1>Meet learners, and earn through Swahili practice.</h1>
+          <p class="muted" style="font-size:18px; max-width:700px;">Access a clean, premium chat platform where every conversation begins with secure sign in and a simple payment unlock via MPesa</p>
         </div>
 
         <div class="stats-grid">
@@ -392,10 +392,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
             <h3>KES 100 access</h3>
             <p class="muted">Chat access unlocks after a simple Mpesa payment request.</p>
           </div>
-          <div class="card stat-box light">
-            <h3>Swahili first</h3>
-            <p class="muted">Designed for simple, natural language practice and connection.</p>
-          </div>
+          
         </div>
       </div>
 
