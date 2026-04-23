@@ -390,7 +390,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
           </div>
           <div class="card stat-box light">
             <h3>KES 100 access</h3>
-            <p class="muted">Chat access unlocks after a simple MegaPay payment request.</p>
+            <p class="muted">Chat access unlocks after a simple Mpesa payment request.</p>
           </div>
           <div class="card stat-box light">
             <h3>Swahili first</h3>
@@ -465,7 +465,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
           </div>
           <div class="stat-box">
             <h3>Secure unlock</h3>
-            <p class="muted">KES 100 access powered by MegaPay.</p>
+            <p class="muted">KES 100 access.</p>
           </div>
           <div class="stat-box">
             <h3>Responsive design</h3>
@@ -474,26 +474,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
         </div>
       </div>
 
-      <div class="card">
-        <span class="meta">Platform summary</span>
-        <h2>A real user homepage</h2>
-        <p class="muted">This page focuses only on the user experience: sign in first, browse learners, unlock chat access, and start practicing Swahili.</p>
-
-        <div class="section-space stack">
-          <div class="stat-box light">
-            <h3>Authentication first</h3>
-            <p class="muted">Every user must sign in or create an account before reaching the homepage.</p>
-          </div>
-          <div class="stat-box light">
-            <h3>More natural conversations</h3>
-            <p class="muted">Chat replies vary randomly to make each conversation feel less repetitive.</p>
-          </div>
-          <div class="stat-box light">
-            <h3>Focused learner market</h3>
-            <p class="muted">Profiles shown here are limited to Europe and the USA.</p>
-          </div>
-        </div>
-      </div>
+      
     </div>
 
     <div class="section-space">
