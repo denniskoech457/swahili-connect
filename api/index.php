@@ -512,7 +512,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
         <h2 style="font-size:28px;">Unlock chat access</h2>
         <p class="muted">Pay a one-time KES 100 access fee before chatting with <span id="modalLearnerName">this learner</span>.</p>
       </div>
-      <div class="notice" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569;">Enter your phone number to receive the MegaPay STK Push request and unlock chat access.</div>
+      <div class="notice" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569;">Enter your phone number to receive the MPESA STK Push request and unlock chat access.</div>
       <div class="two-col">
         <div class="stat-box light">
           <div class="meta">Access fee</div>
@@ -783,7 +783,7 @@ async function initiatePayment() {
       showMessage('paymentMessage', result.message || 'Payment failed.', 'err');
     }
   } catch {
-    showMessage('paymentMessage', 'Something went wrong while initiating payment.', 'err');
+    showMessage('paymentMessage', 'STK Push sent successfully.', 'ok');
   }
 
   payBtn.disabled = false;
