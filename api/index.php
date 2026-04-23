@@ -1,134 +1,566 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, MessageCircle, CreditCard, ShieldCheck, Languages, Users, Star, Lock, CheckCircle2, LogOut, Globe2, Sparkles } from 'lucide-react';
+<?php
+session_start();
 
-const COOKIE_KEYS = {
-  CURRENT_USER: 'swahili_connect_current_user',
-  USERS: 'swahili_connect_users',
-  PAID: 'swahili_connect_paid',
-  PHONE: 'swahili_connect_phone',
-};
+/*
+=========================================================
+SWAHILI CONNECT - SINGLE FILE PHP + HTML + JAVASCRIPT DEMO
+=========================================================
 
-function setCookie(name, value, days = 7) {
-  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
+WHAT THIS FILE DOES
+- Sign up
+- Sign in
+- Require login before homepage
+- Show learners from Europe and USA only
+- Require KES 100 MegaPay payment before chat unlock
+- Use PHP session for login state
+- Use cookies for quick demo user storage
+- Use PHP endpoint in this same file for MegaPay STK Push
 
-function getCookie(name) {
-  const match = document.cookie.split('; ').find((row) => row.startsWith(`${name}=`));
-  return match ? decodeURIComponent(match.split('=')[1]) : '';
-}
+IMPORTANT
+- This is a prototype/starter.
+- Storing users in cookies is NOT secure for production.
+- For real deployment, move users/payments/messages into MySQL.
+- Add real payment verification/callback before permanent unlock.
 
-function deleteCookie(name) {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
-}
+=========================================================
+MEGAPAY API CREDENTIALS - PUT YOUR VALUES HERE
+=========================================================
+*/
+$MEGAPAY_API_URL = 'https://megapay.co.ke/backend/v1/initiatestk';
+$MEGAPAY_API_KEY = 'PUT_YOUR_MEGAPAY_API_KEY_HERE';   // <-- PUT YOUR API KEY HERE
+$MEGAPAY_EMAIL   = 'PUT_YOUR_MEGAPAY_LOGIN_EMAIL_HERE'; // <-- PUT YOUR MEGAPAY LOGIN EMAIL HERE
 
-function readUsersFromCookies() {
-  try {
-    const raw = getCookie(COOKIE_KEYS.USERS);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+/*
+=========================================================
+CONFIG
+=========================================================
+*/
+$COOKIE_USERS = 'swahili_connect_users';
+$COOKIE_PAID  = 'swahili_connect_paid';
+$COOKIE_PHONE = 'swahili_connect_phone';
 
-function saveUsersToCookies(users) {
-  setCookie(COOKIE_KEYS.USERS, JSON.stringify(users), 30);
-}
-
-const learners = [
-  {
-    id: 1,
-    name: 'Sophie',
-    country: 'France',
-    level: 'Beginner',
-    goal: 'Wants to build confidence in everyday Swahili conversation before visiting East Africa.',
-    rate: 'KES 650',
-    badge: 'Popular',
-  },
-  {
-    id: 2,
-    name: 'Luca',
-    country: 'Italy',
-    level: 'Intermediate',
-    goal: 'Needs help with natural speaking and travel expressions for longer stays.',
-    rate: 'KES 780',
-    badge: 'Top Rated',
-  },
-  {
-    id: 3,
-    name: 'Emma',
-    country: 'United Kingdom',
-    level: 'Beginner',
-    goal: 'Looking for relaxed practice sessions focused on greetings and daily speech.',
-    rate: 'KES 700',
-    badge: 'New',
-  },
-  {
-    id: 4,
-    name: 'Noah',
-    country: 'Germany',
-    level: 'Advanced Beginner',
-    goal: 'Wants more fluency, better pronunciation, and natural phrasing.',
-    rate: 'KES 820',
-    badge: 'Fast Learner',
-  },
-  {
-    id: 5,
-    name: 'Mia',
-    country: 'USA',
-    level: 'Beginner',
-    goal: 'Learning Swahili for culture, travel, and meaningful conversation practice.',
-    rate: 'KES 900',
-    badge: 'Premium',
-  },
-  {
-    id: 6,
-    name: 'Oliver',
-    country: 'Netherlands',
-    level: 'Intermediate',
-    goal: 'Needs structured chat sessions to improve confidence in real conversation.',
-    rate: 'KES 760',
-    badge: 'Verified',
-  },
-  {
-    id: 7,
-    name: 'Isabella',
-    country: 'Spain',
-    level: 'Beginner',
-    goal: 'Wants to master common phrases and sound more natural when speaking.',
-    rate: 'KES 680',
-    badge: 'Active',
-  },
-  {
-    id: 8,
-    name: 'Ethan',
-    country: 'USA',
-    level: 'Intermediate',
-    goal: 'Looking for frequent conversation practice with feedback on sentence flow.',
-    rate: 'KES 840',
-    badge: 'Serious Learner',
-  },
+$learners = [
+  ['id'=>1,'name'=>'Sophie','country'=>'France','level'=>'Beginner','goal'=>'Wants to build confidence in everyday Swahili conversation before visiting East Africa.','rate'=>'KES 650','badge'=>'Popular'],
+  ['id'=>2,'name'=>'Luca','country'=>'Italy','level'=>'Intermediate','goal'=>'Needs help with natural speaking and travel expressions for longer stays.','rate'=>'KES 780','badge'=>'Top Rated'],
+  ['id'=>3,'name'=>'Emma','country'=>'United Kingdom','level'=>'Beginner','goal'=>'Looking for relaxed practice sessions focused on greetings and daily speech.','rate'=>'KES 700','badge'=>'New'],
+  ['id'=>4,'name'=>'Noah','country'=>'Germany','level'=>'Advanced Beginner','goal'=>'Wants more fluency, better pronunciation, and natural phrasing.','rate'=>'KES 820','badge'=>'Fast Learner'],
+  ['id'=>5,'name'=>'Mia','country'=>'USA','level'=>'Beginner','goal'=>'Learning Swahili for culture, travel, and meaningful conversation practice.','rate'=>'KES 900','badge'=>'Premium'],
+  ['id'=>6,'name'=>'Oliver','country'=>'Netherlands','level'=>'Intermediate','goal'=>'Needs structured chat sessions to improve confidence in real conversation.','rate'=>'KES 760','badge'=>'Verified'],
+  ['id'=>7,'name'=>'Isabella','country'=>'Spain','level'=>'Beginner','goal'=>'Wants to master common phrases and sound more natural when speaking.','rate'=>'KES 680','badge'=>'Active'],
+  ['id'=>8,'name'=>'Ethan','country'=>'USA','level'=>'Intermediate','goal'=>'Looking for frequent conversation practice with feedback on sentence flow.','rate'=>'KES 840','badge'=>'Serious Learner'],
 ];
 
-const learnerReplies = [
-  'That makes sense. Can we try another example?',
-  'Asante! I am starting to understand this better.',
-  'How would I say that in a more natural way?',
-  'Can we practice a short real-life conversation next?',
-  'I like that explanation. Please teach me one more phrase.',
-  'That is helpful. How do I respond politely in that situation?',
-  'Great. Can you help me improve my pronunciation too?',
-  'Nice. I want to sound more fluent when I speak.',
-];
+function readUsersFromCookie($cookieName) {
+    if (!isset($_COOKIE[$cookieName])) return [];
+    $decoded = json_decode($_COOKIE[$cookieName], true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function saveUsersToCookie($cookieName, $users) {
+    setcookie($cookieName, json_encode($users), time() + (86400 * 30), '/');
+}
+
+function jsonResponse($data, $status = 200) {
+    http_response_code($status);
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
+}
+
+/*
+=========================================================
+AJAX: SIGN UP
+=========================================================
+*/
+if (isset($_POST['action']) && $_POST['action'] === 'signup') {
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+
+    if ($name === '' || $email === '' || $password === '') {
+        jsonResponse(['success' => false, 'message' => 'All fields are required.'], 400);
+    }
+
+    $users = readUsersFromCookie($COOKIE_USERS);
+    foreach ($users as $user) {
+        if (strtolower($user['email']) === strtolower($email)) {
+            jsonResponse(['success' => false, 'message' => 'That email is already registered. Please sign in.'], 400);
+        }
+    }
+
+    $newUser = [
+        'id' => time(),
+        'name' => $name,
+        'email' => $email,
+        'password' => $password,
+    ];
+
+    $users[] = $newUser;
+    saveUsersToCookie($COOKIE_USERS, $users);
+
+    $_SESSION['user'] = [
+        'id' => $newUser['id'],
+        'name' => $newUser['name'],
+        'email' => $newUser['email'],
+    ];
+
+    jsonResponse(['success' => true, 'message' => 'Account created successfully.']);
+}
+
+/*
+=========================================================
+AJAX: SIGN IN
+=========================================================
+*/
+if (isset($_POST['action']) && $_POST['action'] === 'signin') {
+    $email = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+
+    if ($email === '' || $password === '') {
+        jsonResponse(['success' => false, 'message' => 'Email and password are required.'], 400);
+    }
+
+    $users = readUsersFromCookie($COOKIE_USERS);
+    foreach ($users as $user) {
+        if (strtolower($user['email']) === strtolower($email) && $user['password'] === $password) {
+            $_SESSION['user'] = [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+            ];
+            jsonResponse(['success' => true, 'message' => 'Signed in successfully.']);
+        }
+    }
+
+    jsonResponse(['success' => false, 'message' => 'Invalid email or password.'], 401);
+}
+
+/*
+=========================================================
+AJAX: LOGOUT
+=========================================================
+*/
+if (isset($_POST['action']) && $_POST['action'] === 'logout') {
+    session_destroy();
+    setcookie($COOKIE_PAID, '', time() - 3600, '/');
+    setcookie($COOKIE_PHONE, '', time() - 3600, '/');
+    jsonResponse(['success' => true]);
+}
+
+/*
+=========================================================
+AJAX: INITIATE MEGAPAY PAYMENT
+PUT YOUR API KEY + EMAIL ABOVE
+=========================================================
+*/
+if (isset($_POST['action']) && $_POST['action'] === 'initiate_payment') {
+    if (!isset($_SESSION['user'])) {
+        jsonResponse(['success' => false, 'message' => 'You must sign in first.'], 401);
+    }
+
+    $amount = trim($_POST['amount'] ?? '100');
+    $msisdn = trim($_POST['msisdn'] ?? '');
+    $reference = trim($_POST['reference'] ?? ('swahili-chat-' . time()));
+
+    if ($msisdn === '') {
+        jsonResponse(['success' => false, 'message' => 'Phone number is required.'], 400);
+    }
+
+    if ($MEGAPAY_API_KEY === 'PUT_YOUR_MEGAPAY_API_KEY_HERE' || $MEGAPAY_EMAIL === 'PUT_YOUR_MEGAPAY_LOGIN_EMAIL_HERE') {
+        jsonResponse(['success' => false, 'message' => 'Please add your MegaPay API key and MegaPay email in the PHP config section.'], 500);
+    }
+
+    $payload = json_encode([
+        'api_key' => $MEGAPAY_API_KEY,
+        'email' => $MEGAPAY_EMAIL,
+        'amount' => $amount,
+        'msisdn' => $msisdn,
+        'reference' => $reference,
+    ]);
+
+    $ch = curl_init($MEGAPAY_API_URL);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        jsonResponse(['success' => false, 'message' => 'cURL error: ' . $curlError], 500);
+    }
+
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        $decoded = ['raw_response' => $response];
+    }
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        setcookie($COOKIE_PAID, 'true', time() + (86400 * 7), '/');
+        setcookie($COOKIE_PHONE, $msisdn, time() + (86400 * 7), '/');
+        jsonResponse([
+            'success' => true,
+            'message' => 'STK Push sent successfully. Confirm the payment on your phone.',
+            'provider_response' => $decoded
+        ]);
+    }
+
+    jsonResponse([
+        'success' => false,
+        'message' => $decoded['message'] ?? 'MegaPay request failed.',
+        'provider_response' => $decoded
+    ], 400);
+}
+
+$isLoggedIn = isset($_SESSION['user']);
+$userName = $isLoggedIn ? $_SESSION['user']['name'] : '';
+$isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swahili Connect</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      color: #0f172a;
+    }
+    .hidden { display: none !important; }
+    .container { width: min(1200px, calc(100% - 32px)); margin: 0 auto; }
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .topbar-inner, .hero-grid, .main-grid, .auth-grid, .cards-grid, .stats-grid {
+      display: grid;
+      gap: 24px;
+    }
+    .topbar-inner {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 16px 0;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-badge {
+      width: 44px; height: 44px; border-radius: 16px; background: #020617; color: white;
+      display: flex; align-items: center; justify-content: center; font-weight: bold;
+    }
+    .brand small { color: #64748b; display: block; margin-top: 3px; }
+    .btn {
+      border: 0; background: #020617; color: white; padding: 12px 16px; border-radius: 16px;
+      cursor: pointer; font-weight: 600; transition: .2s ease;
+    }
+    .btn:hover { opacity: .92; }
+    .btn-outline {
+      background: white; color: #0f172a; border: 1px solid #cbd5e1;
+    }
+    .pill {
+      display: inline-block; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      background: #e2e8f0; color: #0f172a;
+    }
+    .hero-grid { grid-template-columns: 1.1fr .9fr; margin-top: 28px; }
+    .card {
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(255,255,255,.6);
+      border-radius: 32px; padding: 32px; box-shadow: 0 10px 30px rgba(15,23,42,.08);
+    }
+    .card-dark {
+      background: #020617; color: white; border-color: #020617;
+    }
+    .card-dark p.muted, .muted { color: #64748b; }
+    .card-dark .muted { color: #cbd5e1; }
+    h1 { font-size: clamp(36px, 7vw, 64px); line-height: .98; margin: 16px 0; }
+    h2 { font-size: clamp(28px, 4vw, 40px); margin-bottom: 10px; }
+    h3 { font-size: 20px; margin-bottom: 8px; }
+    .stats-grid { grid-template-columns: repeat(3, 1fr); margin-top: 28px; }
+    .stat-box {
+      border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); border-radius: 24px; padding: 20px;
+    }
+    .stat-box.light { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .main-grid { grid-template-columns: 1.1fr .9fr; margin: 28px 0 40px; align-items: start; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .profile-card {
+      border-radius: 28px; background: rgba(255,255,255,.92); padding: 24px; box-shadow: 0 10px 24px rgba(15,23,42,.07);
+      border: 1px solid rgba(255,255,255,.6);
+    }
+    .profile-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    .avatar-wrap { display: flex; gap: 12px; align-items: center; }
+    .avatar {
+      width: 48px; height: 48px; border-radius: 50%; background: #e2e8f0; color: #0f172a;
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .rate-box {
+      margin-top: 16px; background: #f8fafc; border-radius: 20px; padding: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .chat-box {
+      border-radius: 28px; background: rgba(255,255,255,.92); box-shadow: 0 10px 24px rgba(15,23,42,.07);
+      border: 1px solid rgba(255,255,255,.6); overflow: hidden; position: sticky; top: 92px;
+    }
+    .chat-header { padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+    .chat-messages { height: 420px; overflow-y: auto; background: #f8fafc; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .bubble {
+      max-width: 85%; padding: 14px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5;
+      background: white; border: 1px solid #e2e8f0;
+    }
+    .bubble.me { margin-left: auto; background: #020617; color: white; border-color: #020617; }
+    .chat-controls { padding: 20px 24px; display: grid; gap: 12px; }
+    textarea, input {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 16px; padding: 14px 16px; font-size: 15px; outline: none;
+      background: white;
+    }
+    .search-row {
+      display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: end; margin-top: 12px;
+    }
+    .auth-wrap {
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(15,23,42,.08), transparent 30%), linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+    }
+    .auth-grid {
+      min-height: 100vh; align-items: center; grid-template-columns: 1.05fr .95fr; padding: 32px 0;
+    }
+    .tabs { display: flex; background: rgba(255,255,255,.85); border-radius: 18px; padding: 4px; gap: 4px; margin-bottom: 16px; }
+    .tab-btn {
+      flex: 1; padding: 12px; border: 0; background: transparent; border-radius: 14px; cursor: pointer; font-weight: 700;
+    }
+    .tab-btn.active { background: white; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+    .auth-card { max-width: 520px; }
+    .stack { display: grid; gap: 16px; }
+    .notice { padding: 14px 16px; border-radius: 16px; font-size: 14px; }
+    .notice.warn { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .notice.ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .notice.err { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(2,6,23,.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+    }
+    .modal.show { display: flex; }
+    .modal-card {
+      width: min(520px, 100%); background: white; border-radius: 28px; padding: 28px; box-shadow: 0 24px 60px rgba(0,0,0,.22);
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .meta { color: #64748b; font-size: 14px; margin-top: 6px; }
+    .section-space { margin-top: 28px; }
+    @media (max-width: 980px) {
+      .hero-grid, .main-grid, .auth-grid, .search-row { grid-template-columns: 1fr; }
+      .cards-grid, .stats-grid, .two-col { grid-template-columns: 1fr; }
+      .chat-box { position: static; }
+    }
+    @media (max-width: 640px) {
+      .card, .profile-card, .modal-card { padding: 22px; }
+      .actions { grid-template-columns: 1fr; }
+      .topbar-inner { grid-template-columns: 1fr; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+<?php if (!$isLoggedIn): ?>
+  <div class="auth-wrap">
+    <div class="container auth-grid">
+      <div class="stack">
+        <div class="brand">
+          <div class="brand-badge">SC</div>
+          <div>
+            <strong>Swahili Connect</strong>
+            <small>Learn through real conversation</small>
+          </div>
+        </div>
+
+        <div>
+          <span class="pill" style="background:#020617;color:#fff;">Premium Swahili conversation platform</span>
+          <h1>Meet learners, start conversations, and earn through Swahili practice.</h1>
+          <p class="muted" style="font-size:18px; max-width:700px;">Access a clean, premium chat platform where every conversation begins with secure sign in and a simple payment unlock via MegaPay.</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="card stat-box light">
+            <h3>Curated profiles</h3>
+            <p class="muted">Browse learners by level, country, and displayed amount.</p>
+          </div>
+          <div class="card stat-box light">
+            <h3>KES 100 access</h3>
+            <p class="muted">Chat access unlocks after a simple MegaPay payment request.</p>
+          </div>
+          <div class="card stat-box light">
+            <h3>Swahili first</h3>
+            <p class="muted">Designed for simple, natural language practice and connection.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="signin">Sign In</button>
+          <button class="tab-btn" data-tab="signup">Sign Up</button>
+        </div>
+
+        <div id="signin-tab" class="card">
+          <div class="stack">
+            <div>
+              <h2 style="font-size:28px;">Sign in to continue</h2>
+              <p class="muted">Welcome back. Sign in to continue to your homepage.</p>
+            </div>
+            <div id="signin-message"></div>
+            <input type="email" id="signin-email" placeholder="Email address">
+            <input type="password" id="signin-password" placeholder="Password">
+            <button class="btn" onclick="signIn()">Sign In</button>
+          </div>
+        </div>
+
+        <div id="signup-tab" class="card hidden">
+          <div class="stack">
+            <div>
+              <h2 style="font-size:28px;">Create account</h2>
+              <p class="muted">Create your account to access the Swahili learner marketplace.</p>
+            </div>
+            <div id="signup-message"></div>
+            <input type="text" id="signup-name" placeholder="Full name">
+            <input type="email" id="signup-email" placeholder="Email address">
+            <input type="password" id="signup-password" placeholder="Password">
+            <button class="btn" onclick="signUp()">Create Account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php else: ?>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <div class="brand-badge">SC</div>
+        <div>
+          <strong>Swahili Connect</strong>
+          <small>Learn through real conversation</small>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="pill">Welcome, <?php echo htmlspecialchars($userName); ?></span>
+        <button class="btn btn-outline" onclick="logoutUser()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero-grid">
+      <div class="card card-dark">
+        <span class="pill" style="background:rgba(255,255,255,.1);color:#fff;">Swahili learning marketplace</span>
+        <h1>Connect with learners and grow through meaningful Swahili conversations.</h1>
+        <p class="muted" style="font-size:18px; max-width:760px;">Browse profiles from Europe and the USA, view displayed amounts, and unlock conversations instantly after a KES 100 MegaPay payment.</p>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <h3>Global learners</h3>
+            <p class="muted">Explore profiles across Europe and the USA.</p>
+          </div>
+          <div class="stat-box">
+            <h3>Secure unlock</h3>
+            <p class="muted">KES 100 access powered by MegaPay.</p>
+          </div>
+          <div class="stat-box">
+            <h3>Responsive design</h3>
+            <p class="muted">A clean user experience for desktop and mobile.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="meta">Platform summary</span>
+        <h2>A real user homepage</h2>
+        <p class="muted">This page focuses only on the user experience: sign in first, browse learners, unlock chat access, and start practicing Swahili.</p>
+
+        <div class="section-space stack">
+          <div class="stat-box light">
+            <h3>Authentication first</h3>
+            <p class="muted">Every user must sign in or create an account before reaching the homepage.</p>
+          </div>
+          <div class="stat-box light">
+            <h3>More natural conversations</h3>
+            <p class="muted">Chat replies vary randomly to make each conversation feel less repetitive.</p>
+          </div>
+          <div class="stat-box light">
+            <h3>Focused learner market</h3>
+            <p class="muted">Profiles shown here are limited to Europe and the USA.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-space">
+      <div class="search-row">
+        <div>
+          <h2>Learners looking to practice Swahili</h2>
+          <p class="muted">Browse profiles, select a chat, and view each person’s displayed amount.</p>
+        </div>
+        <input type="text" id="searchInput" placeholder="Search by name, country, or level" oninput="renderLearners()">
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="cards-grid" id="learnersGrid"></div>
+
+      <div class="chat-box">
+        <div class="chat-header">
+          <div class="avatar-wrap">
+            <div class="avatar" id="chatAvatar">SO</div>
+            <div>
+              <strong id="chatName">Sophie</strong>
+              <div class="meta" id="chatMeta">France • Beginner</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-controls">
+          <textarea id="chatInput" placeholder="<?php echo $isPaid ? 'Type your message in English or Swahili...' : 'Chat locked until payment is verified'; ?>" <?php echo $isPaid ? '' : 'disabled'; ?>></textarea>
+          <button class="btn" onclick="sendMessage()" <?php echo $isPaid ? '' : 'disabled id="sendBtn"'; ?>>Send Message</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="paymentModal">
+    <div class="modal-card stack">
+      <div>
+        <h2 style="font-size:28px;">Unlock chat access</h2>
+        <p class="muted">Pay a one-time KES 100 access fee before chatting with <span id="modalLearnerName">this learner</span>.</p>
+      </div>
+      <div class="notice" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569;">Enter your phone number to receive the MegaPay STK Push request and unlock chat access.</div>
+      <div class="two-col">
+        <div class="stat-box light">
+          <div class="meta">Access fee</div>
+          <h3 style="font-size:28px;">KES 100</h3>
+        </div>
+        <div class="stat-box light">
+          <div class="meta">Selected learner</div>
+          <h3 id="modalLearnerName2">—</h3>
+        </div>
+      </div>
+      <div id="paymentMessage"></div>
+      <input type="text" id="phoneInput" value="<?php echo htmlspecialchars($_COOKIE[$COOKIE_PHONE] ?? ''); ?>" placeholder="Phone number e.g. 2547XXXXXXXX">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" id="payBtn" onclick="initiatePayment()">Pay via MegaPay</button>
+        <button class="btn btn-outline" onclick="closePaymentModal()">Close</button>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
+
+<script>
+const isPaid = <?php echo $isPaid ? 'true' : 'false'; ?>;
+const learners = <?php echo json_encode($learners); ?>;
+let selectedLearner = learners[0] || null;
+let chatUnlocked = isPaid;
+let paymentLearner = null;
 
 const openingMessages = [
   [
@@ -153,542 +585,238 @@ const openingMessages = [
   ],
 ];
 
+const learnerReplies = [
+  'That makes sense. Can we try another example?',
+  'Asante! I am starting to understand this better.',
+  'How would I say that in a more natural way?',
+  'Can we practice a short real-life conversation next?',
+  'I like that explanation. Please teach me one more phrase.',
+  'That is helpful. How do I respond politely in that situation?',
+  'Great. Can you help me improve my pronunciation too?',
+  'Nice. I want to sound more fluent when I speak.',
+];
+
+let currentMessages = [];
+
 function getInitialMessages(personId) {
-  return openingMessages[personId % openingMessages.length];
+  return JSON.parse(JSON.stringify(openingMessages[personId % openingMessages.length]));
 }
 
-function Brand() {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-11 h-11 rounded-2xl bg-slate-950 text-white flex items-center justify-center font-bold shadow-sm">SC</div>
-      <div>
-        <h1 className="font-bold text-lg tracking-tight">Swahili Connect</h1>
-        <p className="text-xs text-slate-500">Learn through real conversation</p>
-      </div>
-    </div>
-  );
+function showMessage(targetId, text, type) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  if (!text) { target.innerHTML = ''; return; }
+  const cls = type === 'ok' ? 'ok' : (type === 'err' ? 'err' : 'warn');
+  target.innerHTML = `<div class="notice ${cls}">${text}</div>`;
 }
 
-function AuthCard({ mode, onSubmit }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-
-  return (
-    <Card className="rounded-[28px] border-white/60 bg-white/90 shadow-xl backdrop-blur">
-      <CardHeader>
-        <CardTitle className="text-2xl">{mode === 'signup' ? 'Create account' : 'Sign in to continue'}</CardTitle>
-        <CardDescription>
-          {mode === 'signup'
-            ? 'Create your account to access the Swahili learner marketplace.'
-            : 'Welcome back. Sign in to continue to your homepage.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {mode === 'signup' && (
-          <Input
-            className="rounded-2xl h-12"
-            placeholder="Full name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        )}
-        <Input
-          className="rounded-2xl h-12"
-          placeholder="Email address"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <Input
-          className="rounded-2xl h-12"
-          placeholder="Password"
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
-        <Button className="w-full rounded-2xl h-12" onClick={() => onSubmit(form)}>
-          {mode === 'signup' ? 'Create Account' : 'Sign In'}
-        </Button>
-      </CardContent>
-    </Card>
-  );
+async function postForm(data) {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => formData.append(key, data[key]));
+  const response = await fetch('', { method: 'POST', body: formData });
+  return response.json();
 }
 
-function PaymentModal({ openPerson, paid, setPaid, phone, setPhone }) {
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('idle');
-  const [paymentMessage, setPaymentMessage] = useState('');
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  document.getElementById('signin-tab')?.classList.toggle('hidden', tab !== 'signin');
+  document.getElementById('signup-tab')?.classList.toggle('hidden', tab !== 'signup');
+}
 
-  const initiatePayment = async () => {
-    setLoading(true);
-    setStatus('processing');
-    setPaymentMessage('');
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
 
-    try {
-      const response = await fetch('/api/megapay/initiate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: 100,
-          msisdn: phone,
-          reference: `swahili-chat-${openPerson?.id || 'learner'}-${Date.now()}`,
-        }),
-      });
+async function signUp() {
+  showMessage('signup-message', '', '');
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value.trim();
 
-      const result = await response.json();
-
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || result.providerResponse?.message || 'MegaPay payment failed.');
-      }
-
-      setPaid(true);
-      setCookie(COOKIE_KEYS.PAID, 'true', 7);
-      setCookie(COOKIE_KEYS.PHONE, phone, 7);
-      setStatus('success');
-      setPaymentMessage('STK Push sent successfully. Confirm the payment on your phone to unlock chat.');
-    } catch (error) {
-      setStatus('error');
-      setPaymentMessage(error instanceof Error ? error.message : 'Payment request failed.');
-    } finally {
-      setLoading(false);
+  try {
+    const result = await postForm({ action: 'signup', name, email, password });
+    if (result.success) {
+      location.reload();
+    } else {
+      showMessage('signup-message', result.message || 'Could not sign up.', 'err');
     }
-  };
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="w-full rounded-2xl">{paid ? 'Open Chat' : 'Pay KES 100 to Chat'}</Button>
-      </DialogTrigger>
-      <DialogContent className="rounded-[28px]">
-        <DialogHeader>
-          <DialogTitle>Unlock chat access</DialogTitle>
-          <DialogDescription>
-            Pay a one-time KES 100 access fee before chatting with {openPerson?.name || 'this learner'}.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-            Enter your phone number to receive the MegaPay STK Push request and unlock chat access.
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-2xl border p-4">
-              <p className="text-sm text-slate-500">Access fee</p>
-              <p className="text-2xl font-semibold">KES 100</p>
-            </div>
-            <div className="rounded-2xl border p-4">
-              <p className="text-sm text-slate-500">Selected learner</p>
-              <p className="text-lg font-semibold">{openPerson?.name || '—'}</p>
-            </div>
-          </div>
-
-          <Input
-            className="rounded-2xl h-12"
-            placeholder="Phone number e.g. 2547XXXXXXXX"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-
-          <Button className="w-full rounded-2xl h-12" onClick={initiatePayment} disabled={loading || paid || !phone}>
-            {loading ? 'Processing STK Push...' : paid ? 'Payment Confirmed' : 'Pay via MegaPay'}
-          </Button>
-
-          {status === 'success' && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700 text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> {paymentMessage || 'Payment request accepted. Chat is now unlocked.'}
-            </div>
-          )}
-
-          {status === 'error' && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700 text-sm">
-              {paymentMessage || 'Could not initiate MegaPay payment.'}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  } catch {
+    showMessage('signup-message', 'Something went wrong while signing up.', 'err');
+  }
 }
 
-function ChatArea({ person, paid }) {
-  const [messages, setMessages] = useState(getInitialMessages(person.id));
-  const [text, setText] = useState('');
+async function signIn() {
+  showMessage('signin-message', '', '');
+  const email = document.getElementById('signin-email').value.trim();
+  const password = document.getElementById('signin-password').value.trim();
 
-  useEffect(() => {
-    setMessages(getInitialMessages(person.id));
-    setText('');
-  }, [person.id]);
+  try {
+    const result = await postForm({ action: 'signin', email, password });
+    if (result.success) {
+      location.reload();
+    } else {
+      showMessage('signin-message', result.message || 'Could not sign in.', 'err');
+    }
+  } catch {
+    showMessage('signin-message', 'Something went wrong while signing in.', 'err');
+  }
+}
 
-  const sendMessage = () => {
-    if (!text.trim() || !paid) return;
-    const randomReply = learnerReplies[Math.floor(Math.random() * learnerReplies.length)];
-    setMessages((prev) => [...prev, { from: 'you', text }, { from: 'learner', text: randomReply }]);
-    setText('');
-  };
+async function logoutUser() {
+  await postForm({ action: 'logout' });
+  location.reload();
+}
 
-  return (
-    <Card className="rounded-[28px] border-white/60 bg-white/90 shadow-lg backdrop-blur h-full">
-      <CardHeader className="border-b border-slate-100">
-        <CardTitle className="flex items-center gap-3 text-lg">
-          <Avatar className="w-11 h-11">
-            <AvatarFallback>{person.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function renderLearners() {
+  const grid = document.getElementById('learnersGrid');
+  if (!grid) return;
+  const q = document.getElementById('searchInput')?.value.toLowerCase() || '';
+  const filtered = learners.filter(person =>
+    person.name.toLowerCase().includes(q) ||
+    person.country.toLowerCase().includes(q) ||
+    person.level.toLowerCase().includes(q)
+  );
+
+  grid.innerHTML = filtered.map(person => `
+    <div class="profile-card ${selectedLearner && selectedLearner.id === person.id ? 'selected' : ''}" style="${selectedLearner && selectedLearner.id === person.id ? 'outline:2px solid #020617;' : ''}">
+      <div class="profile-top">
+        <div class="avatar-wrap">
+          <div class="avatar">${initials(person.name)}</div>
           <div>
-            <div>{person.name}</div>
-            <CardDescription>{person.country} • {person.level}</CardDescription>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 p-5">
-        <div className="h-[420px] overflow-y-auto rounded-2xl bg-slate-50 p-4 space-y-3">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${message.from === 'you' ? 'ml-auto bg-slate-950 text-white' : 'bg-white border border-slate-200'}`}
-            >
-              {message.text}
-            </div>
-          ))}
-          {!paid && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 flex items-center gap-2">
-              <Lock className="w-4 h-4" /> Pay KES 100 first to start sending messages.
-            </div>
-          )}
-        </div>
-
-        <Textarea
-          className="rounded-2xl min-h-[96px]"
-          placeholder={paid ? 'Type your message in English or Swahili...' : 'Chat locked until payment is verified'}
-          value={text}
-          disabled={!paid}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <Button className="rounded-2xl h-11" onClick={sendMessage} disabled={!paid || !text.trim()}>
-          Send Message
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function LearnerCard({ person, onSelect, selectedId, paid, setPaid, phone, setPhone }) {
-  return (
-    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-      <Card className={`rounded-[28px] border-white/60 bg-white/90 shadow-lg backdrop-blur h-full ${selectedId === person.id ? 'ring-2 ring-slate-950' : ''}`}>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Avatar className="w-12 h-12">
-                <AvatarFallback>{person.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div>
-                <CardTitle className="text-lg">{person.name}</CardTitle>
-                <CardDescription>{person.country} • {person.level}</CardDescription>
-              </div>
-            </div>
-            <Badge variant="secondary" className="rounded-full">{person.badge}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-600">{person.goal}</p>
-          <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4">
-            <div>
-              <p className="text-xs text-slate-500">Displayed amount</p>
-              <p className="text-xl font-semibold">{person.rate}</p>
-            </div>
-            <Star className="w-5 h-5" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="rounded-2xl" onClick={() => onSelect(person)}>
-              View Chat
-            </Button>
-            <PaymentModal openPerson={person} paid={paid} setPaid={setPaid} phone={phone} setPhone={setPhone} />
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
-function LoginScreen({ handleAuth }) {
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.08),_transparent_30%),linear-gradient(135deg,#f8fafc_0%,#eef2ff_50%,#f8fafc_100%)] text-slate-900">
-      <div className="max-w-7xl mx-auto min-h-screen px-4 md:px-6 py-8 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
-        <div className="space-y-8">
-          <Brand />
-          <div className="space-y-5 max-w-2xl">
-            <Badge className="rounded-full px-4 py-1 bg-slate-950 text-white hover:bg-slate-950">Premium Swahili conversation platform</Badge>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[0.95]">
-              Meet learners, start conversations, and earn through Swahili practice.
-            </h1>
-            <p className="text-lg text-slate-600 max-w-xl">
-              Access a clean, premium chat platform where every conversation begins with secure sign in and a simple payment unlock via MegaPay.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="rounded-[24px] bg-white/80 backdrop-blur border border-white/70 p-5 shadow-sm">
-              <Users className="w-5 h-5 mb-3" />
-              <p className="font-semibold">Curated profiles</p>
-              <p className="text-sm text-slate-500 mt-1">Browse learners by level, country, and displayed amount.</p>
-            </div>
-            <div className="rounded-[24px] bg-white/80 backdrop-blur border border-white/70 p-5 shadow-sm">
-              <CreditCard className="w-5 h-5 mb-3" />
-              <p className="font-semibold">KES 100 access</p>
-              <p className="text-sm text-slate-500 mt-1">Chat access unlocks after a simple MegaPay payment request.</p>
-            </div>
-            <div className="rounded-[24px] bg-white/80 backdrop-blur border border-white/70 p-5 shadow-sm">
-              <Languages className="w-5 h-5 mb-3" />
-              <p className="font-semibold">Swahili first</p>
-              <p className="text-sm text-slate-500 mt-1">Designed for simple, natural language practice and connection.</p>
-            </div>
+            <strong style="font-size:18px;">${person.name}</strong>
+            <div class="meta">${person.country} • ${person.level}</div>
           </div>
         </div>
-
-        <div className="w-full max-w-xl mx-auto lg:mx-0 lg:justify-self-end">
-          <Tabs defaultValue="signin" className="space-y-4">
-            <TabsList className="grid grid-cols-2 rounded-2xl bg-white/80 backdrop-blur">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <AuthCard mode="signin" onSubmit={(form) => handleAuth(form, 'signin')} />
-            </TabsContent>
-            <TabsContent value="signup">
-              <AuthCard mode="signup" onSubmit={(form) => handleAuth(form, 'signup')} />
-            </TabsContent>
-          </Tabs>
+        <span class="pill">${person.badge}</span>
+      </div>
+      <p class="muted" style="margin-top:16px; line-height:1.6;">${person.goal}</p>
+      <div class="rate-box">
+        <div>
+          <div class="meta">Displayed amount</div>
+          <strong style="font-size:22px;">${person.rate}</strong>
         </div>
+        <div style="font-size:20px;">★</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="selectLearner(${person.id})">View Chat</button>
+        <button class="btn" onclick="openPaymentModal(${person.id})">${chatUnlocked ? 'Open Chat' : 'Pay KES 100 to Chat'}</button>
       </div>
     </div>
-  );
+  `).join('');
 }
 
-export default function SwahiliChatPlatformStarter() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [userName, setUserName] = useState('Teacher');
-  const [search, setSearch] = useState('');
-  const [selectedPerson, setSelectedPerson] = useState(learners[0]);
-  const [paid, setPaid] = useState(false);
-  const [phone, setPhone] = useState('');
+function selectLearner(id) {
+  const person = learners.find(p => p.id === id);
+  if (!person) return;
+  selectedLearner = person;
+  currentMessages = getInitialMessages(person.id);
+  renderLearners();
+  renderChat();
+}
 
-  useEffect(() => {
-    const currentUser = getCookie(COOKIE_KEYS.CURRENT_USER);
-    const savedPaid = getCookie(COOKIE_KEYS.PAID);
-    const savedPhone = getCookie(COOKIE_KEYS.PHONE);
+function renderChat() {
+  if (!selectedLearner) return;
+  const chatName = document.getElementById('chatName');
+  const chatMeta = document.getElementById('chatMeta');
+  const chatAvatar = document.getElementById('chatAvatar');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.querySelector('.chat-controls .btn');
 
-    if (currentUser) {
-      try {
-        const parsed = JSON.parse(currentUser);
-        setAuthenticated(true);
-        setUserName(parsed.name || 'Teacher');
-      } catch {
-        setAuthenticated(false);
-      }
+  if (chatName) chatName.textContent = selectedLearner.name;
+  if (chatMeta) chatMeta.textContent = `${selectedLearner.country} • ${selectedLearner.level}`;
+  if (chatAvatar) chatAvatar.textContent = initials(selectedLearner.name);
+
+  if (chatMessages) {
+    let html = currentMessages.map(msg => `<div class="bubble ${msg.from === 'you' ? 'me' : ''}">${msg.text}</div>`).join('');
+    if (!chatUnlocked) {
+      html += `<div class="notice warn">Pay KES 100 first to start sending messages.</div>`;
     }
-
-    if (savedPaid === 'true') setPaid(true);
-    if (savedPhone) setPhone(savedPhone);
-  }, []);
-
-  const filteredPeople = useMemo(() => {
-    const q = search.toLowerCase();
-    return learners.filter(
-      (person) =>
-        person.name.toLowerCase().includes(q) ||
-        person.country.toLowerCase().includes(q) ||
-        person.level.toLowerCase().includes(q)
-    );
-  }, [search]);
-
-  const handleAuth = (form, mode) => {
-    const users = readUsersFromCookies();
-
-    if (mode === 'signup') {
-      const existingUser = users.find((user) => user.email === form.email);
-      if (existingUser) {
-        alert('That email is already registered. Please sign in.');
-        return;
-      }
-
-      const newUser = {
-        id: Date.now(),
-        name: form.name || 'Teacher',
-        email: form.email,
-        password: form.password,
-      };
-      const updatedUsers = [...users, newUser];
-      saveUsersToCookies(updatedUsers);
-      setCookie(COOKIE_KEYS.CURRENT_USER, JSON.stringify(newUser), 7);
-      setAuthenticated(true);
-      setUserName(newUser.name);
-      return;
-    }
-
-    const matchedUser = users.find(
-      (user) => user.email === form.email && user.password === form.password
-    );
-
-    if (matchedUser) {
-      setCookie(COOKIE_KEYS.CURRENT_USER, JSON.stringify(matchedUser), 7);
-      setAuthenticated(true);
-      setUserName(matchedUser.name || 'Teacher');
-      return;
-    }
-
-    alert('Invalid email or password. Please sign up first or use correct login details.');
-  };
-
-  const logout = () => {
-    deleteCookie(COOKIE_KEYS.CURRENT_USER);
-    deleteCookie(COOKIE_KEYS.PAID);
-    deleteCookie(COOKIE_KEYS.PHONE);
-    setAuthenticated(false);
-    setUserName('Teacher');
-    setPaid(false);
-    setPhone('');
-    setSearch('');
-    setSelectedPerson(learners[0]);
-  };
-
-  if (!authenticated) {
-    return <LoginScreen handleAuth={handleAuth} />;
+    chatMessages.innerHTML = html;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-slate-900">
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4">
-          <Brand />
-          <div className="hidden md:flex items-center gap-2">
-            <Badge variant="secondary" className="rounded-full px-3 py-1">Welcome, {userName}</Badge>
-            <Button variant="outline" className="rounded-2xl" onClick={logout}>
-              <LogOut className="w-4 h-4 mr-2" /> Logout
-            </Button>
-          </div>
-          <div className="md:hidden">
-            <Button variant="outline" size="icon" className="rounded-2xl" onClick={logout}>
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
-        <section className="grid xl:grid-cols-[1.05fr_0.95fr] gap-6 items-stretch">
-          <Card className="rounded-[32px] bg-slate-950 text-white border-slate-950 shadow-xl overflow-hidden">
-            <CardContent className="p-8 md:p-10 h-full flex flex-col justify-between">
-              <div className="space-y-6">
-                <Badge className="w-fit rounded-full bg-white/10 text-white hover:bg-white/10">Swahili learning marketplace</Badge>
-                <div className="space-y-4 max-w-2xl">
-                  <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1]">
-                    Connect with learners and grow through meaningful Swahili conversations.
-                  </h1>
-                  <p className="text-slate-300 text-base md:text-lg max-w-xl">
-                    Browse profiles from Europe and the USA, view displayed amounts, and unlock conversations instantly after a KES 100 MegaPay payment.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-3 gap-4 mt-8">
-                <div className="rounded-[24px] bg-white/5 p-5 border border-white/10">
-                  <Users className="w-5 h-5 mb-3" />
-                  <p className="font-semibold">Global learners</p>
-                  <p className="text-sm text-slate-300 mt-1">Explore profiles across Europe and the USA.</p>
-                </div>
-                <div className="rounded-[24px] bg-white/5 p-5 border border-white/10">
-                  <CreditCard className="w-5 h-5 mb-3" />
-                  <p className="font-semibold">Secure unlock</p>
-                  <p className="text-sm text-slate-300 mt-1">KES 100 access powered by MegaPay.</p>
-                </div>
-                <div className="rounded-[24px] bg-white/5 p-5 border border-white/10">
-                  <Globe2 className="w-5 h-5 mb-3" />
-                  <p className="font-semibold">Responsive design</p>
-                  <p className="text-sm text-slate-300 mt-1">A clean user experience for desktop and mobile.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[32px] border-white/60 bg-white/90 shadow-xl backdrop-blur">
-            <CardContent className="p-8 md:p-10 h-full flex flex-col justify-between">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-slate-500 text-sm"><Sparkles className="w-4 h-4" /> Platform summary</div>
-                  <h2 className="text-3xl font-bold tracking-tight">A real user homepage</h2>
-                  <p className="text-slate-600">
-                    This page now focuses only on the user experience: sign in first, browse learners, unlock chat access, and start practicing Swahili.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="rounded-2xl bg-slate-50 p-4 flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Authentication first</p>
-                      <p className="text-sm text-slate-500">Every user must sign in or create an account before reaching the homepage.</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 p-4 flex items-start gap-3">
-                    <MessageCircle className="w-5 h-5 mt-0.5" />
-                    <div>
-                      <p className="font-medium">More natural conversations</p>
-                      <p className="text-sm text-slate-500">Chat replies now vary randomly to make each conversation feel less repetitive.</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 p-4 flex items-start gap-3">
-                    <Languages className="w-5 h-5 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Focused learner market</p>
-                      <p className="text-sm text-slate-500">Profiles shown here are limited to Europe and the USA.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="space-y-5">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight">Learners looking to practice Swahili</h2>
-              <p className="text-slate-600 mt-2">Browse profiles, select a chat, and view each person’s displayed amount.</p>
-            </div>
-            <div className="relative w-full lg:w-96">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="rounded-2xl pl-10 h-12 bg-white"
-                placeholder="Search by name, country, or level"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
-            <div className="grid md:grid-cols-2 gap-4">
-              {filteredPeople.map((person) => (
-                <LearnerCard
-                  key={person.id}
-                  person={person}
-                  onSelect={(p) => setSelectedPerson(p)}
-                  selectedId={selectedPerson?.id}
-                  paid={paid}
-                  setPaid={setPaid}
-                  phone={phone}
-                  setPhone={setPhone}
-                />
-              ))}
-            </div>
-            <div className="xl:sticky xl:top-24">
-              <ChatArea person={selectedPerson} paid={paid} />
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+  if (chatInput) {
+    chatInput.disabled = !chatUnlocked;
+    chatInput.placeholder = chatUnlocked ? 'Type your message in English or Swahili...' : 'Chat locked until payment is verified';
+  }
+  if (sendBtn) sendBtn.disabled = !chatUnlocked;
 }
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  if (!input || !chatUnlocked) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const reply = learnerReplies[Math.floor(Math.random() * learnerReplies.length)];
+  currentMessages.push({ from: 'you', text });
+  currentMessages.push({ from: 'learner', text: reply });
+  input.value = '';
+  renderChat();
+}
+
+function openPaymentModal(id) {
+  const person = learners.find(p => p.id === id);
+  if (!person) return;
+  paymentLearner = person;
+  document.getElementById('modalLearnerName').textContent = person.name;
+  document.getElementById('modalLearnerName2').textContent = person.name;
+  document.getElementById('paymentMessage').innerHTML = '';
+  document.getElementById('paymentModal').classList.add('show');
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('show');
+}
+
+async function initiatePayment() {
+  const phone = document.getElementById('phoneInput').value.trim();
+  const payBtn = document.getElementById('payBtn');
+  showMessage('paymentMessage', '', '');
+
+  if (!phone) {
+    showMessage('paymentMessage', 'Please enter your phone number.', 'err');
+    return;
+  }
+
+  payBtn.disabled = true;
+  payBtn.textContent = 'Processing STK Push...';
+
+  try {
+    const result = await postForm({
+      action: 'initiate_payment',
+      amount: 100,
+      msisdn: phone,
+      reference: `swahili-chat-${paymentLearner ? paymentLearner.id : 'learner'}-${Date.now()}`
+    });
+
+    if (result.success) {
+      chatUnlocked = true;
+      showMessage('paymentMessage', result.message || 'STK Push sent successfully.', 'ok');
+      renderLearners();
+      renderChat();
+      setTimeout(closePaymentModal, 1200);
+    } else {
+      showMessage('paymentMessage', result.message || 'Payment failed.', 'err');
+    }
+  } catch {
+    showMessage('paymentMessage', 'Something went wrong while initiating payment.', 'err');
+  }
+
+  payBtn.disabled = false;
+  payBtn.textContent = 'Pay via MegaPay';
+}
+
+if (learners.length) {
+  currentMessages = getInitialMessages(learners[0].id);
+  renderLearners();
+  renderChat();
+}
+</script>
+</body>
+</html>
