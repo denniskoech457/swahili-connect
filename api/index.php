@@ -27,8 +27,8 @@ MEGAPAY API CREDENTIALS - PUT YOUR VALUES HERE
 =========================================================
 */
 $MEGAPAY_API_URL = 'https://megapay.co.ke/backend/v1/initiatestk';
-$MEGAPAY_API_KEY = 'PUT_YOUR_MEGAPAY_API_KEY_HERE';   // <-- PUT YOUR API KEY HERE
-$MEGAPAY_EMAIL   = 'PUT_YOUR_MEGAPAY_LOGIN_EMAIL_HERE'; // <-- PUT YOUR MEGAPAY LOGIN EMAIL HERE
+$MEGAPAY_API_KEY = 'MGPYlWU6lMpS';   // <-- PUT YOUR API KEY HERE
+$MEGAPAY_EMAIL   = 'denniskoskey5@gmail.com'; // <-- PUT YOUR MEGAPAY LOGIN EMAIL HERE
 
 /*
 =========================================================
