@@ -790,7 +790,7 @@ async function initiatePayment() {
   }
 
   payBtn.disabled = false;
-  payBtn.textContent = 'Pay via MegaPay';
+  payBtn.textContent = 'Pay via MPesa';
 }
 
 if (learners.length) {
