@@ -456,7 +456,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
       <div class="card card-dark">
         <span class="pill" style="background:rgba(255,255,255,.1);color:#fff;">Swahili learning marketplace</span>
         <h1>Connect with learners and grow through meaningful Swahili conversations.</h1>
-        <p class="muted" style="font-size:18px; max-width:760px;">Browse profiles from Europe and the USA, view displayed amounts, and unlock conversations instantly after a KES 100 MegaPay payment.</p>
+        <p class="muted" style="font-size:18px; max-width:760px;">Browse profiles from Europe and the USA, view displayed amounts, and unlock conversations instantly after a KES 100 MPesa payment.</p>
 
         <div class="stats-grid">
           <div class="stat-box">
@@ -529,7 +529,7 @@ $isPaid = isset($_COOKIE[$COOKIE_PAID]) && $_COOKIE[$COOKIE_PAID] === 'true';
       <div id="paymentMessage"></div>
       <input type="text" id="phoneInput" value="<?php echo htmlspecialchars($_COOKIE[$COOKIE_PHONE] ?? ''); ?>" placeholder="Phone number e.g. 2547XXXXXXXX">
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn" id="payBtn" onclick="initiatePayment()">Pay via MegaPay</button>
+        <button class="btn" id="payBtn" onclick="initiatePayment()">Pay via MPesa</button>
         <button class="btn btn-outline" onclick="closePaymentModal()">Close</button>
       </div>
     </div>
